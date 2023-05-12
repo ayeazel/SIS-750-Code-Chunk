@@ -1,0 +1,80 @@
+---
+title: "Yeazel Code Chunk"
+author: "Adam Yeazel"
+date: "2023-05-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+
+setwd("/Users/adamyeazel/Desktop/American University/SIS 750 Data Analysis/Problem Sets/Poster")
+
+```
+
+```{r prev}
+# creating factor function
+FctWhen = function(...) {
+  args = rlang::list2(...)
+  rhs = map(args, rlang::f_rhs)
+  cases = case_when( !!!args )
+  exec(fct_relevel, cases, !!!rhs)
+}
+
+# creating a function to create tables with factoring
+codebookfactor = function(.data, x){
+  x = enquo(x) 
+  count(.data, !!x) %>% 
+  mutate(
+    values = as.numeric(!!x),
+    labels = as_factor(!!x), 
+    freq = n,
+    pct = n/sum(n)*100,
+    .keep = 'unused'
+  ) %>% 
+  knitr::kable(format = 'pipe', digits = 1L)
+}
+```
+
+Sometimes you need to be able to edit a table like a dataframe, but once you've made a kable you are unable to coerce it back into a dataframe and use your desired functions. This function allows you to convert your kables back into dataframes using base R. 
+
+```{r function}
+
+# function to read markdown table (kable) back into dataframe
+read.markdown <- function(file, stringsAsFactors = FALSE, strip.white = TRUE, ...){
+    if (length(file) > 1) {
+        lines <- file
+    } else if (grepl('\n', file)) {
+        con <- textConnection(file)
+        lines <- readLines(con)
+        close(con)
+    } else {
+        lines <- readLines(file)
+    }
+    lines <- lines[!grepl('^[[:blank:]+-=:_|]*$', lines)]
+    lines <- gsub('(^\\s*?\\|)|(\\|\\s*?$)', '', lines)
+    read.delim(text = paste(lines, collapse = '\n'), sep = '|', 
+               stringsAsFactors = stringsAsFactors, strip.white = strip.white, ...)
+}
+
+
+# an example of how it is used to keep values while overriding format
+
+df = mtcars %>% 
+  mutate(
+    cyl = FctWhen(
+      cyl == 4 ~ "Four-cylinder",
+      cyl == 6 ~ "Six-cylinder",
+      cyl == 8 ~ "Eight-cylinder",
+      TRUE ~ "N/A"
+    ),
+    .keep = 'unused')
+
+# creating a markdown table (kable)
+tab = codebookfactor(df, cyl)
+
+# reading the kable back into a dataframe
+read.markdown(tab)
+```
+
